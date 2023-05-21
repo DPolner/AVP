@@ -17,8 +17,58 @@
 #define IR_L A1
 #define IR_R A0
 
+// Farbsensorik Pins festlegen
+#define S0_R 27
+#define S1_R 29
+#define S2_R 31
+#define S3_R 33
+#define sensorOut_R 35
+#define LED_R 37
+
+#define S0_L 38
+#define S1_L 41
+#define S2_L 43
+#define S3_L 45
+#define sensorOut_L 47
+#define LED_L 49
+
+//farben speichern
+int redfrequency_L = 0;
+int greenfrequency_L = 0;
+int bluefrequency_L = 0;
+
+int redfrequency_R = 0;
+int greenfrequency_R = 0;
+int bluefrequency_R = 0;
+
+//Endrichtung
+// 1 = blau| 2 = rot| 3 = gruen
+int taster = 3; 
+
 void setup() {
-  // put your setup code here, to run once:
+
+  //Setup für Farbsensorik LINKS
+  pinMode(S0_L, OUTPUT);
+  pinMode(S1_L, OUTPUT);
+  pinMode(S2_L, OUTPUT);
+  pinMode(S3_L, OUTPUT);
+  pinMode(sensorOut_L, INPUT);
+  pinMode(LED_L, OUTPUT);
+  // Setting frequency-scaling to 20%
+  digitalWrite(S0_L,HIGH);
+  digitalWrite(S1_L,LOW);
+
+  //Setup für Farbsensorik RECHTS
+  pinMode(S0_R, OUTPUT);
+  pinMode(S1_R, OUTPUT);
+  pinMode(S2_R, OUTPUT);
+  pinMode(S3_R, OUTPUT);
+  pinMode(sensorOut_R, INPUT);
+  pinMode(LED_R, OUTPUT);
+  // Setting frequency-scaling to 20%
+  digitalWrite(S0_R,HIGH);
+  digitalWrite(S1_R,LOW);
+
   //Setup für Motor 1
   pinMode(GM1, OUTPUT);
   pinMode(GM1in1, OUTPUT);
@@ -44,11 +94,12 @@ void loop() {
   // Code für Auswahl wohin FTS sich bewegen muss
 
   // Code für Farberkennung
+  abbiegen();
 
   // Code fürs Folgen der Linie
   if((analogRead(IR_L) <= 500) && (analogRead(IR_R) <= 500)){
     forward();
-    //Serial.println("vor");
+    Serial.println("vor");
   } else if((analogRead(IR_L) <= 500) && (analogRead(IR_R) >= 500)){
     right();
     //Serial.println("rechts");
@@ -59,10 +110,135 @@ void loop() {
     stop();
     //Serial.println("stop");
   }
+}
 
+void abbiegen() {
+  if (taster = farbeErkennen_L()) {
+    stop();
+    delay(100);
+    if  (taster = farbeErkennen_L())  {
+      turnLeft();
+    } else {
+      return;
+    }
+  } else if (taster = farbeErkennen_R()) {
+    stop();
+    delay(100);
+    if  (taster = farbeErkennen_R())  {
+      turnRight();
+    } else  {
+      return;
+    }
+  } else {
+    return;
+  }
 }
 
 
+int farbeErkennen_L() {
+  // Setting red filtered photodiodes to be read
+  digitalWrite(S2_L,LOW);
+  digitalWrite(S3_L,LOW);
+  digitalWrite(LED_L,LOW); //LOW=Switch ON the 4 LEDs, HIGH=Switch off the 4 LEDs
+
+  // Reading the output frequency
+  redfrequency_L = pulseIn(sensorOut_L, LOW);
+
+  delay(1000);
+  // Setting Green filtered photodiodes to be read
+  digitalWrite(S2_L,HIGH);
+  digitalWrite(S3_L,HIGH);
+  // Reading the output frequency
+  greenfrequency_L = pulseIn(sensorOut_L, LOW);
+  // Printing the value on the serial monitor
+ 
+  delay(1000);
+  // Setting Blue filtered photodiodes to be read
+  digitalWrite(S2_L,LOW);
+  digitalWrite(S3_L,HIGH);
+  // Reading the output frequency
+  bluefrequency_L = pulseIn(sensorOut_L, LOW);
+
+  if (redfrequency_L<20 && greenfrequency_L<20 && bluefrequency_L<20) {
+    //Serial.println("NO COLOR DETECTION LEFT");  Test
+    return 0;
+  } else if (bluefrequency_L<20 & redfrequency_L>20) {
+    //Serial.println("BLUE COLOUR LEFT");  //Test
+    return 1;
+  } else if (redfrequency_L<20) {
+    //Serial.println("RED COLOUR LEFT");  //Test
+    return 2;
+  } else if (redfrequency_L>30) {
+    //Serial.println("GREEN COLOUR LEFT");  // Test
+    return 3;
+  } else {
+    //Serial.println("FAILURE LEFT"); //Test
+    return 0;
+  } 
+}
+
+int farbeErkennen_R(){
+
+  // Setting red filtered photodiodes to be read
+  digitalWrite(S2_R,LOW);
+  digitalWrite(S3_R,LOW);
+  digitalWrite(LED_R,LOW); //LOW=Switch ON the 4 LEDs, HIGH=Switch off the 4 LEDs
+
+  // Reading the output frequency
+  redfrequency_R = pulseIn(sensorOut_R, LOW);
+
+  delay(1000);
+  // Setting Green filtered photodiodes to be read
+  digitalWrite(S2_R,HIGH);
+  digitalWrite(S3_R,HIGH);
+  // Reading the output frequency
+  greenfrequency_R = pulseIn(sensorOut_R, LOW);
+  // Printing the value on the serial monitor
+ 
+  delay(1000);
+  // Setting Blue filtered photodiodes to be read
+  digitalWrite(S2_R,LOW);
+  digitalWrite(S3_R,HIGH);
+  // Reading the output frequency
+  bluefrequency_R = pulseIn(sensorOut_R, LOW);
+
+
+  if (redfrequency_R < 20 && greenfrequency_R < 20 && bluefrequency_R < 20) {
+    //Serial.println("NO COLOR DETECTION RIGHT"); //Test
+    return 0;
+  } else if (bluefrequency_R < 20 & redfrequency_R > 20) {
+    //Serial.println("BLUE COLOUR RIGHT");  //Test
+    return 1;
+  } else if (redfrequency_R < 20) {
+    //Serial.println("RED COLOUR RIGHT");  //Test
+    return 2;
+  } else if (redfrequency_R > 30) {
+    //Serial.println("GREEN COLOUR RIGHT"); //Test
+    return 3;
+  } else {
+    Serial.println("FAILURE RIGHT");
+    return 0;
+  } 
+
+}
+
+void turnLeft(){
+  while((analogRead(IR_L) <= 500)) {
+    left();
+  }
+  while((analogRead(IR_R) <= 500)) {
+    left();
+  }
+}
+
+void turnRight(){
+    while((analogRead(IR_R) <= 500)) {
+    right();
+  }
+  while((analogRead(IR_L) <= 500)) {
+    right();
+  }
+}
 
 void forward(){
   // Motor 1 wird angesteuert
@@ -74,18 +250,6 @@ void forward(){
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
   analogWrite(GM2, 255);
-  /*
-  delay(10);
-  digitalWrite(GM1in1, LOW);
-  digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 150);
-  //Motor 2 wird angesteuert
-  digitalWrite(GM2in1, LOW);
-  digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 150);
-  // Code fürs abladen der Palette
-  delay(10);
-  */
 }
 
 void left(){
@@ -98,19 +262,6 @@ void left(){
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
   analogWrite(GM2, 255);
-/*
-  delay(15);
-  digitalWrite(GM1in1, LOW);
-  digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 150);
-  //Motor 2 wird angesteuert
-  digitalWrite(GM2in1, LOW);
-  digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 150);
-  // Code fürs abladen der Palette
-  delay(15);
-  */
-
 }
 
 void right(){
@@ -123,18 +274,6 @@ void right(){
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, HIGH);
   analogWrite(GM2, 255);
-  /*
-  delay(15);
-  digitalWrite(GM1in1, LOW);
-  digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 255);
-  //Motor 2 wird angesteuert
-  digitalWrite(GM2in1, LOW);
-  digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 255);
-  // Code fürs abladen der Palette
-  delay(15);
-  */
 }
 
 void stop(){
