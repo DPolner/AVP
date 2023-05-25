@@ -43,7 +43,7 @@ int bluefrequency_R = 0;
 
 //Endrichtung
 // 1 = blau| 2 = rot| 3 = gruen
-int taster = 3; 
+int taster = 2; 
 
 void setup() {
 
@@ -97,14 +97,20 @@ void loop() {
   abbiegen();
 
   // Code fürs Folgen der Linie
+
+  //linieFolgen();
+  
+}
+
+void linieFolgen()  {
   if((analogRead(IR_L) <= 500) && (analogRead(IR_R) <= 500)){
     forward();
-    Serial.println("vor");
+    //Serial.println("vor");
   } else if((analogRead(IR_L) <= 500) && (analogRead(IR_R) >= 500)){
-    right();
+    right(100);
     //Serial.println("rechts");
   } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) <= 500)){
-    left();
+    left(100);
     //Serial.println("links");
   } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) >= 500)){
     stop();
@@ -113,24 +119,28 @@ void loop() {
 }
 
 void abbiegen() {
-  if (taster = farbeErkennen_L()) {
+  if (taster == farbeErkennen_L()) {
     stop();
     delay(100);
-    if  (taster = farbeErkennen_L())  {
+    if  (taster == farbeErkennen_L())  {
       turnLeft();
+      linieFolgen();
+      linieFolgen();
     } else {
-      return;
+      linieFolgen();
     }
-  } else if (taster = farbeErkennen_R()) {
+  } else if (taster == farbeErkennen_R()) {
     stop();
     delay(100);
-    if  (taster = farbeErkennen_R())  {
+    if  (taster == farbeErkennen_R())  {
       turnRight();
+      linieFolgen();
+      linieFolgen();
     } else  {
-      return;
+      linieFolgen();
     }
   } else {
-    return;
+    linieFolgen();
   }
 }
 
@@ -144,7 +154,7 @@ int farbeErkennen_L() {
   // Reading the output frequency
   redfrequency_L = pulseIn(sensorOut_L, LOW);
 
-  delay(1000);
+  delay(100);
   // Setting Green filtered photodiodes to be read
   digitalWrite(S2_L,HIGH);
   digitalWrite(S3_L,HIGH);
@@ -152,7 +162,7 @@ int farbeErkennen_L() {
   greenfrequency_L = pulseIn(sensorOut_L, LOW);
   // Printing the value on the serial monitor
  
-  delay(1000);
+  delay(100);
   // Setting Blue filtered photodiodes to be read
   digitalWrite(S2_L,LOW);
   digitalWrite(S3_L,HIGH);
@@ -162,6 +172,9 @@ int farbeErkennen_L() {
   if (redfrequency_L<20 && greenfrequency_L<20 && bluefrequency_L<20) {
     //Serial.println("NO COLOR DETECTION LEFT");  Test
     return 0;
+  } else if (redfrequency_L > 40 && greenfrequency_L > 40 && bluefrequency_L > 40)  {
+    return 0;
+    //Serial.println("SChwarz COLOUR LEFT");  //Test
   } else if (bluefrequency_L<20 & redfrequency_L>20) {
     //Serial.println("BLUE COLOUR LEFT");  //Test
     return 1;
@@ -187,7 +200,7 @@ int farbeErkennen_R(){
   // Reading the output frequency
   redfrequency_R = pulseIn(sensorOut_R, LOW);
 
-  delay(1000);
+  delay(100);
   // Setting Green filtered photodiodes to be read
   digitalWrite(S2_R,HIGH);
   digitalWrite(S3_R,HIGH);
@@ -195,7 +208,7 @@ int farbeErkennen_R(){
   greenfrequency_R = pulseIn(sensorOut_R, LOW);
   // Printing the value on the serial monitor
  
-  delay(1000);
+  delay(100);
   // Setting Blue filtered photodiodes to be read
   digitalWrite(S2_R,LOW);
   digitalWrite(S3_R,HIGH);
@@ -205,6 +218,9 @@ int farbeErkennen_R(){
 
   if (redfrequency_R < 20 && greenfrequency_R < 20 && bluefrequency_R < 20) {
     //Serial.println("NO COLOR DETECTION RIGHT"); //Test
+    return 0;
+  } else if (redfrequency_R > 40 && greenfrequency_R > 40 && bluefrequency_R > 40)  {
+    //Serial.println("SChwarz COLOUR LEFT");  //Test
     return 0;
   } else if (bluefrequency_R < 20 & redfrequency_R > 20) {
     //Serial.println("BLUE COLOUR RIGHT");  //Test
@@ -216,7 +232,7 @@ int farbeErkennen_R(){
     //Serial.println("GREEN COLOUR RIGHT"); //Test
     return 3;
   } else {
-    Serial.println("FAILURE RIGHT");
+    //Serial.println("FAILURE RIGHT");
     return 0;
   } 
 
@@ -224,19 +240,19 @@ int farbeErkennen_R(){
 
 void turnLeft(){
   while((analogRead(IR_L) <= 500)) {
-    left();
+    left(100);
   }
   while((analogRead(IR_R) <= 500)) {
-    left();
+    left(100);
   }
 }
 
 void turnRight(){
     while((analogRead(IR_R) <= 500)) {
-    right();
+    right(100);
   }
   while((analogRead(IR_L) <= 500)) {
-    right();
+    right(100);
   }
 }
 
@@ -244,45 +260,45 @@ void forward(){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, HIGH);
   digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 255);
+  analogWrite(GM1, 110);
 
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 255);
+  analogWrite(GM2, 110);
 }
 
-void left(){
+void left(int speed){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, LOW);
   digitalWrite(GM1in2, HIGH);
-  analogWrite(GM1, 255);
+  analogWrite(GM1, speed);
 
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 255);
+  analogWrite(GM2, speed);
 }
 
-void right(){
+void right(int speed){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, HIGH);
   digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 255);
+  analogWrite(GM1, speed);
 
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, HIGH);
-  analogWrite(GM2, 255);
+  analogWrite(GM2, speed);
 }
 
 void stop(){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, LOW);
   digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 150);
+  analogWrite(GM1, 255);
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 150);
+  analogWrite(GM2, 255);
 }
