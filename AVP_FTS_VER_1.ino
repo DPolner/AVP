@@ -32,6 +32,14 @@
 #define sensorOut_L 47
 #define LED_L 49
 
+// Pins für Taster festlegen
+#define Taster_vorwaerts 2
+#define Taster_ruckwaerts 3
+#define Taster_rot 30
+#define Taster_gruen 32
+#define Taster_blau 34
+#define Taster_silber 36
+
 //farben speichern
 int redfrequency_L = 0;
 int greenfrequency_L = 0;
@@ -41,9 +49,14 @@ int redfrequency_R = 0;
 int greenfrequency_R = 0;
 int bluefrequency_R = 0;
 
-//Endrichtung
-// 1 = blau| 2 = rot| 3 = gruen
-int taster = 2; 
+// Endrichtung
+// 1 = blau| 2 = rot| 3 = gruen | 4 = grau
+int Zielstation = 2; 
+
+// Fahrtrichtung
+// 1 = vorwärts | 2 = rückwärts
+int Fahrtrichtung = 0;
+
 
 void setup() {
 
@@ -54,6 +67,7 @@ void setup() {
   pinMode(S3_L, OUTPUT);
   pinMode(sensorOut_L, INPUT);
   pinMode(LED_L, OUTPUT);
+
   // Setting frequency-scaling to 20%
   digitalWrite(S0_L,HIGH);
   digitalWrite(S1_L,LOW);
@@ -65,6 +79,7 @@ void setup() {
   pinMode(S3_R, OUTPUT);
   pinMode(sensorOut_R, INPUT);
   pinMode(LED_R, OUTPUT);
+
   // Setting frequency-scaling to 20%
   digitalWrite(S0_R,HIGH);
   digitalWrite(S1_R,LOW);
@@ -89,11 +104,43 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  // Code für Transport der Palette
+  while (Fahrtrichtung == 0) {
+        if (digitalRead(Taster_vorwaerts) == LOW) { //Fahrtrichtung auslesen
+      Fahrtrichtung = 1;
+      delay(10);
+      break;
+    }
+    else if (digitalRead(Taster_ruckwaerts) == LOW) {
+      Fahrtrichtung = 2;
+      delay(10);
+      break;
+    } else {
+      Fahrtrichtung = 0;
+    }
+  }
 
-  // Code für Auswahl wohin FTS sich bewegen muss
+  while (Zielstation == 0)  {
+    if (digitalRead(Taster_rot) == LOW) { //Zielstation auslesen
+      Zielstation = 1;
+      delay(10);
+      break;
+    } else if (digitalRead(Taster_gruen) == LOW) {
+      Zielstation = 2;
+      delay(10);
+      break;
+    } else if (digitalRead(Taster_blau) == LOW) {
+      Zielstation = 3;
+      delay(10);
+      break;
+    } else if (digitalRead(Taster_silber) == LOW) {
+      Zielstation = 4;
+      delay(10);
+      break;
+    } else {
+      Zielstation = 0;
+    }
+  }
 
-  // Code für Farberkennung
   abbiegen();
 
   // Code fürs Folgen der Linie
@@ -107,32 +154,32 @@ void linieFolgen()  {
     forward();
     //Serial.println("vor");
   } else if((analogRead(IR_L) <= 500) && (analogRead(IR_R) >= 500)){
-    right(100);
+    right(150);
     //Serial.println("rechts");
   } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) <= 500)){
-    left(100);
+    left(150);
     //Serial.println("links");
   } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) >= 500)){
-    stop();
+    stop(1);
     //Serial.println("stop");
   }
 }
 
 void abbiegen() {
-  if (taster == farbeErkennen_L()) {
-    stop();
+  if (Zielstation == farbeErkennen_L()) {
+    stop(0);
     delay(100);
-    if  (taster == farbeErkennen_L())  {
+    if  (Zielstation == farbeErkennen_L())  {
       turnLeft();
       linieFolgen();
       linieFolgen();
     } else {
       linieFolgen();
     }
-  } else if (taster == farbeErkennen_R()) {
-    stop();
+  } else if (Zielstation == farbeErkennen_R()) {
+    stop(0);
     delay(100);
-    if  (taster == farbeErkennen_R())  {
+    if  (Zielstation == farbeErkennen_R())  {
       turnRight();
       linieFolgen();
       linieFolgen();
@@ -222,15 +269,18 @@ int farbeErkennen_R(){
   } else if (redfrequency_R > 40 && greenfrequency_R > 40 && bluefrequency_R > 40)  {
     //Serial.println("SChwarz COLOUR LEFT");  //Test
     return 0;
-  } else if (bluefrequency_R < 20 & redfrequency_R > 20) {
+  } else if (bluefrequency_R < 20 && redfrequency_R > 30 && greenfrequency_R > 20 && bluefrequency_R > 10 && redfrequency_R < 40 && greenfrequency_R < 33) {
     //Serial.println("BLUE COLOUR RIGHT");  //Test
     return 1;
-  } else if (redfrequency_R < 20) {
+  } else if (bluefrequency_R < 33 && redfrequency_R < 15 && greenfrequency_R < 40 && bluefrequency_R > 25 && redfrequency_R > 10 && greenfrequency_R > 30) {
     //Serial.println("RED COLOUR RIGHT");  //Test
     return 2;
-  } else if (redfrequency_R > 30) {
+  } else if (bluefrequency_R < 30 && redfrequency_R < 55 && greenfrequency_R < 30 && bluefrequency_R > 25 && redfrequency_R > 45 && greenfrequency_R > 23) {
     //Serial.println("GREEN COLOUR RIGHT"); //Test
     return 3;
+  } else if (bluefrequency_R < 25 && redfrequency_R < 25 && greenfrequency_R < 28 && bluefrequency_R > 18 && redfrequency_R > 20 && greenfrequency_R > 22)  {
+    //Serial.println("GREY COLOUR RIGHT"); //Test
+    return 4;
   } else {
     //Serial.println("FAILURE RIGHT");
     return 0;
@@ -240,19 +290,19 @@ int farbeErkennen_R(){
 
 void turnLeft(){
   while((analogRead(IR_L) <= 500)) {
-    left(100);
+    left(180);
   }
   while((analogRead(IR_R) <= 500)) {
-    left(100);
+    left(180);
   }
 }
 
 void turnRight(){
     while((analogRead(IR_R) <= 500)) {
-    right(100);
+    right(180);
   }
   while((analogRead(IR_L) <= 500)) {
-    right(100);
+    right(180);
   }
 }
 
@@ -292,7 +342,7 @@ void right(int speed){
   analogWrite(GM2, speed);
 }
 
-void stop(){
+void stop(int s){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, LOW);
   digitalWrite(GM1in2, LOW);
@@ -301,4 +351,8 @@ void stop(){
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, LOW);
   analogWrite(GM2, 255);
+  if (s == 1) {
+    Zielstation = 0;
+    Fahrtrichtung = 0;
+  }
 }

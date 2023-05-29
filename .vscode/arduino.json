@@ -1,0 +1,6 @@
+{
+    "configuration": "cpu=atmega2560",
+    "board": "arduino:avr:mega",
+    "programmer": "arduinoisporg",
+    "sketch": "AVP_FTS_VER_1.ino"
+}
