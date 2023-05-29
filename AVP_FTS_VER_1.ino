@@ -121,15 +121,15 @@ void loop() {
 
   while (Zielstation == 0)  {
     if (digitalRead(Taster_rot) == LOW) { //Zielstation auslesen
-      Zielstation = 1;
-      delay(10);
-      break;
-    } else if (digitalRead(Taster_gruen) == LOW) {
       Zielstation = 2;
       delay(10);
       break;
-    } else if (digitalRead(Taster_blau) == LOW) {
+    } else if (digitalRead(Taster_gruen) == LOW) {
       Zielstation = 3;
+      delay(10);
+      break;
+    } else if (digitalRead(Taster_blau) == LOW) {
+      Zielstation = 1;
       delay(10);
       break;
     } else if (digitalRead(Taster_silber) == LOW) {
