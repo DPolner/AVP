@@ -3,15 +3,22 @@
 // Gleichstrommotor 1 ansteuern
 #define GM1 6   // muss PWM Pin sein
 #define GM1in1 9
-//#define GM1in1 30 // gelb
 #define GM1in2 32
 
 // Gleichstrommotor 2 ansteuern
 #define GM2 5   // muss PWM Pin sein
 #define GM2in1 4
-//#define GM2in1 28 //blau
-//#define GM2in2 7
 #define GM2in2 26 //lila
+
+// Gleichstrommotor 3 ansteuern
+#define GM3 8   // muss PWM Pin sein
+#define GM3in1 7
+#define GM3in2 40
+
+// Gleichstrommotor 4 ansteuern
+#define GM4 11   // muss PWM Pin sein
+#define GM4in1 10
+#define GM4in2 42
 
 // Infrarotsensoren Pins festlegen
 #define IR_L A1
@@ -33,12 +40,12 @@
 #define LED_L 49
 
 // Pins für Taster festlegen
-#define Taster_vorwaerts 2
-#define Taster_ruckwaerts 3
-#define Taster_rot 30
-#define Taster_gruen 32
-#define Taster_blau 34
-#define Taster_silber 36
+#define Taster_vorwaerts 23
+#define Taster_ruckwaerts 25
+#define Taster_rot 24
+#define Taster_gruen 28
+#define Taster_blau 22
+#define Taster_silber 3
 
 //farben speichern
 int redfrequency_L = 0;
@@ -51,7 +58,7 @@ int bluefrequency_R = 0;
 
 // Endrichtung
 // 1 = blau| 2 = rot| 3 = gruen | 4 = grau
-int Zielstation = 2; 
+int Zielstation = 0; 
 
 // Fahrtrichtung
 // 1 = vorwärts | 2 = rückwärts
@@ -59,6 +66,14 @@ int Fahrtrichtung = 0;
 
 
 void setup() {
+
+  // Steup für Taster
+  pinMode(Taster_vorwaerts, INPUT_PULLUP);
+  pinMode(Taster_ruckwaerts, INPUT_PULLUP);
+  pinMode(Taster_rot, INPUT_PULLUP);
+  pinMode(Taster_gruen, INPUT_PULLUP);
+  pinMode(Taster_blau, INPUT_PULLUP);
+  pinMode(Taster_silber, INPUT_PULLUP);
 
   //Setup für Farbsensorik LINKS
   pinMode(S0_L, OUTPUT);
@@ -94,6 +109,16 @@ void setup() {
   pinMode(GM2in1, OUTPUT);
   pinMode(GM2in2, OUTPUT);
 
+  //Setup für Motor 3
+  pinMode(GM3, OUTPUT);
+  pinMode(GM3in1, OUTPUT);
+  pinMode(GM3in2, OUTPUT);
+
+  // Setup für Motor 4
+  pinMode(GM4, OUTPUT);
+  pinMode(GM4in1, OUTPUT);
+  pinMode(GM4in2, OUTPUT);
+
   // Setup für IR Sensorik
   pinMode(IR_L, INPUT);
   pinMode(IR_R, INPUT);
@@ -103,50 +128,57 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
   while (Fahrtrichtung == 0) {
-        if (digitalRead(Taster_vorwaerts) == LOW) { //Fahrtrichtung auslesen
+    //Serial.println("Fahrtrichtung wählen");
+    if (digitalRead(Taster_vorwaerts) == LOW) { //Fahrtrichtung auslesen
+    //Serial.println("vorwärts fahren");
       Fahrtrichtung = 1;
       delay(10);
       break;
-    }
-    else if (digitalRead(Taster_ruckwaerts) == LOW) {
+    } else if (digitalRead(Taster_ruckwaerts) == LOW) {
+      //Serial.println("rückwärts fahren");
       Fahrtrichtung = 2;
       delay(10);
       break;
     } else {
       Fahrtrichtung = 0;
+      //Serial.println("nix fahren");
     }
   }
 
   while (Zielstation == 0)  {
+    //Serial.println("Zielstation auswählen");
     if (digitalRead(Taster_rot) == LOW) { //Zielstation auslesen
+    //Serial.println("Zielstation rot");
       Zielstation = 2;
-      delay(10);
+      delay(1000);
       break;
     } else if (digitalRead(Taster_gruen) == LOW) {
       Zielstation = 3;
-      delay(10);
+      delay(1000);
       break;
     } else if (digitalRead(Taster_blau) == LOW) {
       Zielstation = 1;
-      delay(10);
+      delay(1000);
       break;
     } else if (digitalRead(Taster_silber) == LOW) {
       Zielstation = 4;
-      delay(10);
+      delay(1000);
       break;
     } else {
       Zielstation = 0;
+      //Serial.println("nix Endstation");
     }
   }
+  
+
 
   abbiegen();
 
   // Code fürs Folgen der Linie
 
   //linieFolgen();
-  
+  //stop(0);
 }
 
 void linieFolgen()  {
@@ -166,6 +198,7 @@ void linieFolgen()  {
 }
 
 void abbiegen() {
+  //Serial.println("move bitch");
   if (Zielstation == farbeErkennen_L()) {
     stop(0);
     delay(100);
@@ -190,6 +223,7 @@ void abbiegen() {
     linieFolgen();
   }
 }
+
 
 
 int farbeErkennen_L() {
@@ -222,15 +256,18 @@ int farbeErkennen_L() {
   } else if (redfrequency_L > 40 && greenfrequency_L > 40 && bluefrequency_L > 40)  {
     return 0;
     //Serial.println("SChwarz COLOUR LEFT");  //Test
-  } else if (bluefrequency_L<20 & redfrequency_L>20) {
+  } else if (bluefrequency_L < 20 && redfrequency_L > 30 && greenfrequency_L > 25) {
     //Serial.println("BLUE COLOUR LEFT");  //Test
     return 1;
-  } else if (redfrequency_L<20) {
+  } else if (bluefrequency_L > 25 && redfrequency_L < 20 && greenfrequency_L > 30) {
     //Serial.println("RED COLOUR LEFT");  //Test
     return 2;
-  } else if (redfrequency_L>30) {
+  } else if (bluefrequency_L > 25 && redfrequency_L > 35 && greenfrequency_L > 25) {
     //Serial.println("GREEN COLOUR LEFT");  // Test
     return 3;
+  } else if (bluefrequency_L < 25 && redfrequency_L < 25 && greenfrequency_L < 25 && bluefrequency_L > 15 && redfrequency_L > 15 && greenfrequency_L > 15) {
+    return 4;
+    //Serial.println("grau")
   } else {
     //Serial.println("FAILURE LEFT"); //Test
     return 0;
@@ -269,16 +306,16 @@ int farbeErkennen_R(){
   } else if (redfrequency_R > 40 && greenfrequency_R > 40 && bluefrequency_R > 40)  {
     //Serial.println("SChwarz COLOUR LEFT");  //Test
     return 0;
-  } else if (bluefrequency_R < 20 && redfrequency_R > 30 && greenfrequency_R > 20 && bluefrequency_R > 10 && redfrequency_R < 40 && greenfrequency_R < 33) {
+  } else if (bluefrequency_R < 20 && redfrequency_R > 30 && greenfrequency_R > 25) {
     //Serial.println("BLUE COLOUR RIGHT");  //Test
     return 1;
-  } else if (bluefrequency_R < 33 && redfrequency_R < 15 && greenfrequency_R < 40 && bluefrequency_R > 25 && redfrequency_R > 10 && greenfrequency_R > 30) {
+  } else if (bluefrequency_R > 25 && redfrequency_R < 20 && greenfrequency_R > 30) {
     //Serial.println("RED COLOUR RIGHT");  //Test
     return 2;
-  } else if (bluefrequency_R < 30 && redfrequency_R < 55 && greenfrequency_R < 30 && bluefrequency_R > 25 && redfrequency_R > 45 && greenfrequency_R > 23) {
+  } else if (bluefrequency_R > 25 && redfrequency_R > 35 && greenfrequency_R > 25) {
     //Serial.println("GREEN COLOUR RIGHT"); //Test
     return 3;
-  } else if (bluefrequency_R < 25 && redfrequency_R < 25 && greenfrequency_R < 28 && bluefrequency_R > 18 && redfrequency_R > 20 && greenfrequency_R > 22)  {
+  } else if (bluefrequency_R < 25 && redfrequency_R < 25 && greenfrequency_R < 25 && bluefrequency_R > 15 && redfrequency_R > 15 && greenfrequency_R > 15)  {
     //Serial.println("GREY COLOUR RIGHT"); //Test
     return 4;
   } else {
@@ -290,19 +327,19 @@ int farbeErkennen_R(){
 
 void turnLeft(){
   while((analogRead(IR_L) <= 500)) {
-    left(180);
+    left(150);
   }
   while((analogRead(IR_R) <= 500)) {
-    left(180);
+    left(150);
   }
 }
 
 void turnRight(){
     while((analogRead(IR_R) <= 500)) {
-    right(180);
+    right(150);
   }
   while((analogRead(IR_L) <= 500)) {
-    right(180);
+    right(150);
   }
 }
 
@@ -310,12 +347,22 @@ void forward(){
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, HIGH);
   digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 110);
+  analogWrite(GM1, 80);
 
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 110);
+  analogWrite(GM2, 80);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, HIGH);
+  digitalWrite(GM3in2, LOW);
+  analogWrite(GM3, 80);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, HIGH);
+  digitalWrite(GM4in2, LOW);
+  analogWrite(GM4, 80);
 }
 
 void left(int speed){
@@ -328,6 +375,16 @@ void left(int speed){
   digitalWrite(GM2in1, HIGH);
   digitalWrite(GM2in2, LOW);
   analogWrite(GM2, speed);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, LOW);
+  digitalWrite(GM3in2, HIGH);
+  analogWrite(GM3, speed);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, HIGH);
+  digitalWrite(GM4in2, LOW);
+  analogWrite(GM4, speed);
 }
 
 void right(int speed){
@@ -340,6 +397,16 @@ void right(int speed){
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, HIGH);
   analogWrite(GM2, speed);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, HIGH);
+  digitalWrite(GM3in2, LOW);
+  analogWrite(GM3, speed);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, LOW);
+  digitalWrite(GM4in2, HIGH);
+  analogWrite(GM4, speed);
 }
 
 void stop(int s){
@@ -347,10 +414,21 @@ void stop(int s){
   digitalWrite(GM1in1, LOW);
   digitalWrite(GM1in2, LOW);
   analogWrite(GM1, 255);
+
   //Motor 2 wird angesteuert
   digitalWrite(GM2in1, LOW);
   digitalWrite(GM2in2, LOW);
   analogWrite(GM2, 255);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, LOW);
+  digitalWrite(GM3in2, LOW);
+  analogWrite(GM3, 255);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, LOW);
+  digitalWrite(GM4in2, LOW);
+  analogWrite(GM4, 255);
   if (s == 1) {
     Zielstation = 0;
     Fahrtrichtung = 0;
