@@ -1,30 +1,45 @@
 // Pin verteilen
 
-// Gleichstrommotor 1 ansteuern
+// Gleichstrommotor 1 ansteuern | Motorshield 1 Motor vorne links
 #define GM1 6   // muss PWM Pin sein
 #define GM1in1 9
 #define GM1in2 32
 
-// Gleichstrommotor 2 ansteuern
+// Gleichstrommotor 2 ansteuern | Motorshield 1 Motor vorne rechts
 #define GM2 5   // muss PWM Pin sein
-#define GM2in1 4
-#define GM2in2 26 //lila
+#define GM2in1 4  // muss PWM Pin sein
+#define GM2in2 26 
 
-// Gleichstrommotor 3 ansteuern
+// Gleichstrommotor 3 ansteuern | Motorschield 2 Motor hinten links
 #define GM3 8   // muss PWM Pin sein
-#define GM3in1 7
+#define GM3in1 7  // muss PWM Pin sein
 #define GM3in2 40
 
-// Gleichstrommotor 4 ansteuern
+// Gleichstrommotor 4 ansteuern | Motorschield 2 Motor hinten rechts
 #define GM4 11   // muss PWM Pin sein
-#define GM4in1 10
+#define GM4in1 10 // muss PWM Pin sein
 #define GM4in2 42
 
+// Förderbandmotor ansteuern  | Motorschield 3 
+#define GMF 3
+#define GMFin1 2
+#define GMFin2 52
+
 // Infrarotsensoren Pins festlegen
-#define IR_L A1
-#define IR_R A0
+// IR Sensoren die vorne sind
+#define IR_v_L A1
+#define IR_v_R A0
+
+// IR Sensoren die hinten sind
+#define IR_h_L A15
+#define IR_h_R A14
+
+// IR Sensoren die am Förderer sind
+#define IRF_v A2
+#define IRF_h A13
 
 // Farbsensorik Pins festlegen
+// rechter Farbsensor
 #define S0_R 27
 #define S1_R 29
 #define S2_R 31
@@ -32,6 +47,7 @@
 #define sensorOut_R 35
 #define LED_R 37
 
+// linker Farbsensor
 #define S0_L 38
 #define S1_L 41
 #define S2_L 43
@@ -45,7 +61,7 @@
 #define Taster_rot 24
 #define Taster_gruen 28
 #define Taster_blau 22
-#define Taster_silber 3
+#define Taster_silber 30
 
 //farben speichern
 int redfrequency_L = 0;
@@ -63,8 +79,8 @@ int Zielstation = 0;
 // Fahrtrichtung
 // 1 = vorwärts | 2 = rückwärts
 int Fahrtrichtung = 0;
-
-
+// keine Leerfahrt = 0 | Leerfahrt = 1
+int Leerfahrt = 0;
 void setup() {
 
   // Steup für Taster
@@ -119,39 +135,52 @@ void setup() {
   pinMode(GM4in1, OUTPUT);
   pinMode(GM4in2, OUTPUT);
 
+  // Setup für Förderbandmotor
+  pinMode(GMF, OUTPUT);
+  pinMode(GMFin1, OUTPUT);
+  pinMode(GMFin2, OUTPUT);
+
   // Setup für IR Sensorik
-  pinMode(IR_L, INPUT);
-  pinMode(IR_R, INPUT);
+  pinMode(IR_v_L, INPUT);
+  pinMode(IR_v_R, INPUT);
+  pinMode(IR_h_L, INPUT);
+  pinMode(IR_h_R, INPUT);
+  pinMode(IRF_v, INPUT);
+  pinMode(IRF_h, INPUT);
+
   TCCR0B = TCCR0B & B11111000 | B00000010 ;
   Serial.begin(9600);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+
   while (Fahrtrichtung == 0) {
-    //Serial.println("Fahrtrichtung wählen");
     if (digitalRead(Taster_vorwaerts) == LOW) { //Fahrtrichtung auslesen
-    //Serial.println("vorwärts fahren");
       Fahrtrichtung = 1;
-      delay(10);
+      Leerfahrt = 1;
       break;
     } else if (digitalRead(Taster_ruckwaerts) == LOW) {
-      //Serial.println("rückwärts fahren");
       Fahrtrichtung = 2;
+      Leerfahrt = 1;
       delay(10);
       break;
-    } else {
+    } else if (analogRead(IRF_v) < 500){
+      Fahrtrichtung = 2;
+      foerdern_aufnahme();
+      break;
+    } else if (analogRead(IRF_h) < 500){
+      Fahrtrichtung = 1;
+      foerdern_aufnahme();
+      break;
+    }
+    else {
       Fahrtrichtung = 0;
-      //Serial.println("nix fahren");
     }
   }
 
   while (Zielstation == 0)  {
-    //Serial.println("Zielstation auswählen");
     if (digitalRead(Taster_rot) == LOW) { //Zielstation auslesen
-    //Serial.println("Zielstation rot");
       Zielstation = 2;
-      delay(1000);
       break;
     } else if (digitalRead(Taster_gruen) == LOW) {
       Zielstation = 3;
@@ -167,43 +196,48 @@ void loop() {
       break;
     } else {
       Zielstation = 0;
-      //Serial.println("nix Endstation");
     }
   }
-  
 
-
+  //foerdern();
   abbiegen();
-
-  // Code fürs Folgen der Linie
-
-  //linieFolgen();
-  //stop(0);
 }
+
 
 void linieFolgen()  {
-  if((analogRead(IR_L) <= 500) && (analogRead(IR_R) <= 500)){
-    forward();
-    //Serial.println("vor");
-  } else if((analogRead(IR_L) <= 500) && (analogRead(IR_R) >= 500)){
-    right(150);
-    //Serial.println("rechts");
-  } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) <= 500)){
-    left(150);
-    //Serial.println("links");
-  } else if((analogRead(IR_L) >= 500) && (analogRead(IR_R) >= 500)){
-    stop(1);
-    //Serial.println("stop");
+  if(Fahrtrichtung == 1){
+    if((analogRead(IR_v_L) <= 500) && (analogRead(IR_v_R) <= 500)){
+      forward();
+    } else if((analogRead(IR_v_L) <= 500) && (analogRead(IR_v_R) >= 500)){
+      right(255);
+    } else if((analogRead(IR_v_L) >= 500) && (analogRead(IR_v_R) <= 500)){
+      left(255);
+    } else if((analogRead(IR_v_L) >= 500) && (analogRead(IR_v_R) >= 500)){
+      stop(1);
+    }
+  } else if(Fahrtrichtung == 2){
+      if((analogRead(IR_h_L) <= 500) && (analogRead(IR_h_R) <= 500)){
+        backward();
+      } else if((analogRead(IR_h_L) <= 500) && (analogRead(IR_h_R) >= 500)){
+        right(255);
+      } else if((analogRead(IR_h_L) >= 500) && (analogRead(IR_h_R) <= 500)){
+        left(255);
+      } else if((analogRead(IR_h_L) >= 500) && (analogRead(IR_h_R) >= 500)){
+        stop(1);
+      }
+    }
   }
-}
+
 
 void abbiegen() {
-  //Serial.println("move bitch");
+if (Fahrtrichtung == 1){
   if (Zielstation == farbeErkennen_L()) {
     stop(0);
     delay(100);
     if  (Zielstation == farbeErkennen_L())  {
       turnLeft();
+      linieFolgen();
+      linieFolgen();
       linieFolgen();
       linieFolgen();
     } else {
@@ -216,6 +250,36 @@ void abbiegen() {
       turnRight();
       linieFolgen();
       linieFolgen();
+      linieFolgen();
+      linieFolgen();
+    } else  {
+      linieFolgen();
+    }
+  } else {
+    linieFolgen();
+  }
+} else if (Fahrtrichtung == 2) {
+  if (Zielstation == farbeErkennen_L()) {
+    stop(0);
+    delay(100);
+    if  (Zielstation == farbeErkennen_L())  {
+      turnRight();
+      linieFolgen();
+      linieFolgen();
+      linieFolgen();
+      linieFolgen();
+    } else {
+      linieFolgen();
+    }
+  } else if (Zielstation == farbeErkennen_R()) {
+    stop(0);
+    delay(100);
+    if  (Zielstation == farbeErkennen_R())  {
+      turnLeft();
+      linieFolgen();
+      linieFolgen();
+      linieFolgen();
+      linieFolgen();
     } else  {
       linieFolgen();
     }
@@ -223,8 +287,52 @@ void abbiegen() {
     linieFolgen();
   }
 }
+}
 
-
+void foerdern_aufnahme(){
+    while(true) {
+      if (Fahrtrichtung == 1) {
+        if (analogRead(IRF_v) >= 500) {
+          f_forward();
+        } else if (analogRead(IRF_v) < 500){
+          f_stop();
+          break;
+        }
+      } else if ( Fahrtrichtung == 2) {
+          if (analogRead(IRF_h) >= 500) {
+            f_backward();
+          } else if (analogRead(IRF_h) < 500){
+            f_stop();
+            break;
+        }
+      } else {
+        break;
+      }
+    }
+}
+void foerdern_abgabe(){
+  while(true){
+    if (Fahrtrichtung == 1) {
+      if (analogRead(IRF_v) < 500) {
+        delay(1000);
+        f_forward();
+      } else if (analogRead(IRF_v) > 500) {
+        f_stop();
+        break;
+      }
+    } else if (Fahrtrichtung == 2) {
+      if (analogRead(IRF_h) < 500) {
+        delay(1000);
+        f_backward();
+      } else if (analogRead(IRF_h) > 500){
+        f_stop();
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+}
 
 int farbeErkennen_L() {
   // Setting red filtered photodiodes to be read
@@ -250,26 +358,20 @@ int farbeErkennen_L() {
   // Reading the output frequency
   bluefrequency_L = pulseIn(sensorOut_L, LOW);
 
-  if (redfrequency_L<20 && greenfrequency_L<20 && bluefrequency_L<20) {
-    //Serial.println("NO COLOR DETECTION LEFT");  Test
+  // linker sensor
+  if (redfrequency_L<15 && greenfrequency_L<15 && bluefrequency_L<15) { // keine Farbe 
     return 0;
-  } else if (redfrequency_L > 40 && greenfrequency_L > 40 && bluefrequency_L > 40)  {
+  } else if (redfrequency_L > 40 && greenfrequency_L > 40 && bluefrequency_L > 40)  { // schwarze Farbe
     return 0;
-    //Serial.println("SChwarz COLOUR LEFT");  //Test
-  } else if (bluefrequency_L < 20 && redfrequency_L > 30 && greenfrequency_L > 25) {
-    //Serial.println("BLUE COLOUR LEFT");  //Test
+  } else if (bluefrequency_L < 20 && redfrequency_L > 30 && greenfrequency_L > 22) {  // blaue Farbe
     return 1;
-  } else if (bluefrequency_L > 25 && redfrequency_L < 20 && greenfrequency_L > 30) {
-    //Serial.println("RED COLOUR LEFT");  //Test
+  } else if (bluefrequency_L > 25 && redfrequency_L < 20 && greenfrequency_L > 35) {  // rote Farbe
     return 2;
-  } else if (bluefrequency_L > 25 && redfrequency_L > 35 && greenfrequency_L > 25) {
-    //Serial.println("GREEN COLOUR LEFT");  // Test
+  } else if (bluefrequency_L > 25 && redfrequency_L > 35 && greenfrequency_L > 22) {  // grüne Farbe
     return 3;
-  } else if (bluefrequency_L < 25 && redfrequency_L < 25 && greenfrequency_L < 25 && bluefrequency_L > 15 && redfrequency_L > 15 && greenfrequency_L > 15) {
+  } else if (bluefrequency_L < 22 && redfrequency_L < 25 && greenfrequency_L < 25 && bluefrequency_L > 12 && redfrequency_L > 15 && greenfrequency_L > 15) {  // graue/ silberne Farbe
     return 4;
-    //Serial.println("grau")
-  } else {
-    //Serial.println("FAILURE LEFT"); //Test
+  } else {  // Fehler/ keine Farbe
     return 0;
   } 
 }
@@ -299,73 +401,68 @@ int farbeErkennen_R(){
   // Reading the output frequency
   bluefrequency_R = pulseIn(sensorOut_R, LOW);
 
-
-  if (redfrequency_R < 20 && greenfrequency_R < 20 && bluefrequency_R < 20) {
-    //Serial.println("NO COLOR DETECTION RIGHT"); //Test
+  // rechter Sensir
+  if (redfrequency_R < 15 && greenfrequency_R < 15 && bluefrequency_R < 15) { // keine Farbe
     return 0;
-  } else if (redfrequency_R > 40 && greenfrequency_R > 40 && bluefrequency_R > 40)  {
-    //Serial.println("SChwarz COLOUR LEFT");  //Test
+  } else if (redfrequency_R > 40 && greenfrequency_R > 40 && bluefrequency_R > 40)  { // schwarze Farbe
     return 0;
-  } else if (bluefrequency_R < 20 && redfrequency_R > 30 && greenfrequency_R > 25) {
-    //Serial.println("BLUE COLOUR RIGHT");  //Test
+  } else if (bluefrequency_R < 20 && redfrequency_R > 30 && greenfrequency_R > 23) {  // blaue Farbe
     return 1;
-  } else if (bluefrequency_R > 25 && redfrequency_R < 20 && greenfrequency_R > 30) {
-    //Serial.println("RED COLOUR RIGHT");  //Test
+  } else if (bluefrequency_R > 25 && redfrequency_R < 20 && greenfrequency_R > 35) {  // rote Farbe
     return 2;
-  } else if (bluefrequency_R > 25 && redfrequency_R > 35 && greenfrequency_R > 25) {
-    //Serial.println("GREEN COLOUR RIGHT"); //Test
+  } else if (bluefrequency_R > 25 && redfrequency_R > 35 && greenfrequency_R > 22) {  // grüne Farbe
     return 3;
-  } else if (bluefrequency_R < 25 && redfrequency_R < 25 && greenfrequency_R < 25 && bluefrequency_R > 15 && redfrequency_R > 15 && greenfrequency_R > 15)  {
-    //Serial.println("GREY COLOUR RIGHT"); //Test
+  } else if (bluefrequency_R < 25 && redfrequency_R < 25 && greenfrequency_R < 25 && bluefrequency_R > 14 && redfrequency_R > 15 && greenfrequency_R > 15)  { // graue/ silberne Farbe
     return 4;
-  } else {
-    //Serial.println("FAILURE RIGHT");
+  } else {  // Fehler/ keine Farbe
     return 0;
   } 
 
 }
 
 void turnLeft(){
-  while((analogRead(IR_L) <= 500)) {
-    left(150);
-  }
-  while((analogRead(IR_R) <= 500)) {
-    left(150);
+  if (Fahrtrichtung == 1) {
+    while((analogRead(IR_v_L) <= 500)) {
+      left(255);
+    }
+    while((analogRead(IR_v_R) <= 500)) {
+      left(255);
+    }
+  } else if (Fahrtrichtung == 2) {
+    while((analogRead(IR_h_L) <= 500)) {
+      left(255);
+    }
+    while((analogRead(IR_h_R) <= 500)) {
+      left(255);
+    }
   }
 }
 
 void turnRight(){
-    while((analogRead(IR_R) <= 500)) {
-    right(150);
-  }
-  while((analogRead(IR_L) <= 500)) {
-    right(150);
+  if (Fahrtrichtung == 1) {
+    while((analogRead(IR_v_R) <= 500)) {
+      right(255);
+    }
+    while((analogRead(IR_v_L) <= 500)) {
+      right(255);
+    }
+  } else if (Fahrtrichtung == 2) {
+      while((analogRead(IR_v_R) <= 500)) {
+      right(255);
+    }
+    while((analogRead(IR_v_L) <= 500)) {
+      right(255);
+    }
   }
 }
 
 void forward(){
-  // Motor 1 wird angesteuert
-  digitalWrite(GM1in1, HIGH);
-  digitalWrite(GM1in2, LOW);
-  analogWrite(GM1, 80);
-
-  //Motor 2 wird angesteuert
-  digitalWrite(GM2in1, HIGH);
-  digitalWrite(GM2in2, LOW);
-  analogWrite(GM2, 80);
-
-  // Motor 3 wird angesteuert
-  digitalWrite(GM3in1, HIGH);
-  digitalWrite(GM3in2, LOW);
-  analogWrite(GM3, 80);
-
-  //Motor 4 wird angesteuert
-  digitalWrite(GM4in1, HIGH);
-  digitalWrite(GM4in2, LOW);
-  analogWrite(GM4, 80);
-}
-
-void left(int speed){
+  int speed;
+  if (Leerfahrt ==1) {  // Geschwindigkeit während Leerfahrt
+    speed = 90;
+  } else if (Leerfahrt == 0) {  // Geschwindigkeit während beladener Fahrt
+    speed = 100;
+  }
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, LOW);
   digitalWrite(GM1in2, HIGH);
@@ -387,7 +484,13 @@ void left(int speed){
   analogWrite(GM4, speed);
 }
 
-void right(int speed){
+void backward(){
+  int speed;
+  if (Leerfahrt == 1) { // Geschwindigkeit während Leerfahrt
+    speed = 90;
+  } else if (Leerfahrt == 0) {  // Geschwindigkeit während beladener Fahrt
+    speed = 100;
+  }
   // Motor 1 wird angesteuert
   digitalWrite(GM1in1, HIGH);
   digitalWrite(GM1in2, LOW);
@@ -401,6 +504,50 @@ void right(int speed){
   // Motor 3 wird angesteuert
   digitalWrite(GM3in1, HIGH);
   digitalWrite(GM3in2, LOW);
+  analogWrite(GM3, speed);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, LOW);
+  digitalWrite(GM4in2, HIGH);
+  analogWrite(GM4, speed);
+}
+
+void left(int speed){
+  // Motor 1 wird angesteuert
+  digitalWrite(GM1in1, HIGH);
+  digitalWrite(GM1in2, LOW);
+  analogWrite(GM1, speed);
+
+  //Motor 2 wird angesteuert
+  digitalWrite(GM2in1, HIGH);
+  digitalWrite(GM2in2, LOW);
+  analogWrite(GM2, speed);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, HIGH);
+  digitalWrite(GM3in2, LOW);
+  analogWrite(GM3, speed);
+
+  //Motor 4 wird angesteuert
+  digitalWrite(GM4in1, HIGH);
+  digitalWrite(GM4in2, LOW);
+  analogWrite(GM4, speed);
+}
+
+void right(int speed){
+  // Motor 1 wird angesteuert
+  digitalWrite(GM1in1, LOW);
+  digitalWrite(GM1in2, HIGH);
+  analogWrite(GM1, speed);
+
+  //Motor 2 wird angesteuert
+  digitalWrite(GM2in1, LOW);
+  digitalWrite(GM2in2, HIGH);
+  analogWrite(GM2, speed);
+
+  // Motor 3 wird angesteuert
+  digitalWrite(GM3in1, LOW);
+  digitalWrite(GM3in2, HIGH);
   analogWrite(GM3, speed);
 
   //Motor 4 wird angesteuert
@@ -430,7 +577,31 @@ void stop(int s){
   digitalWrite(GM4in2, LOW);
   analogWrite(GM4, 255);
   if (s == 1) {
+    if (Leerfahrt == 0) {
+      foerdern_abgabe();
+      Leerfahrt = 0;
+      Zielstation = 0;
+      Fahrtrichtung = 0;
+    }
     Zielstation = 0;
     Fahrtrichtung = 0;
   }
+}
+
+void f_forward(){
+  digitalWrite(GMFin1, LOW);
+  digitalWrite(GMFin2, HIGH);
+  analogWrite(GMF, 120);
+}
+
+void f_stop(){
+  digitalWrite(GMFin1, LOW);
+  digitalWrite(GMFin2, LOW);
+  analogWrite(GMF, 120);
+}
+
+void f_backward(){
+  digitalWrite(GMFin1, HIGH);
+  digitalWrite(GMFin2, LOW);
+  analogWrite(GMF, 120);
 }
